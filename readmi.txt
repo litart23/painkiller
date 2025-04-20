@@ -1,0 +1,4 @@
+Как запустить: переходим в корень папки бека для запуска cd e:\dream\painkillerv\backend;
+применяем команду .\venv\Scripts\activate; python main.py
+
+Фронт: просто в корне проекта команда: npm run dev
