@@ -87,12 +87,13 @@ const toggleAuthMode = () => {
 const handleSubmit = async () => {
   try {
     if (isLogin.value) {
-      const response = await axios.post('/api/token', {
-        username: username.value,
-        password: password.value
-      }, {
+      const formData = new URLSearchParams()
+      formData.append('username', username.value)
+      formData.append('password', password.value)
+      
+      const response = await axios.post('/api/token', formData, {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/x-www-form-urlencoded'
         }
       })
       console.log('Login response:', response.data)
@@ -106,12 +107,13 @@ const handleSubmit = async () => {
       console.log('Register response:', registerResponse.data)
       
       // After registration, automatically log in
-      const loginResponse = await axios.post('/api/token', {
-        username: username.value,
-        password: password.value
-      }, {
+      const formData = new URLSearchParams()
+      formData.append('username', username.value)
+      formData.append('password', password.value)
+      
+      const loginResponse = await axios.post('/api/token', formData, {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/x-www-form-urlencoded'
         }
       })
       console.log('Auto login response:', loginResponse.data)
