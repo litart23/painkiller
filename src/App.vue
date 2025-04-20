@@ -11,7 +11,7 @@
           <template v-if="currentUser">
             <div class="flex items-center gap-2">
               <i class="fas fa-user text-[#1C2B3A]"></i>
-              <span class="text-[#1C2B3A]">{{ currentUser.username }}</span>
+              <span class="text-[#1C2B3A]">{{ currentUser?.username || 'Unknown' }}</span>
             </div>
             <button 
               @click="handleLogout"
@@ -51,7 +51,7 @@
           <div class="p-6">
             <div class="flex justify-between items-start mb-2">
               <h3 class="text-lg font-semibold text-[#1C2B3A]">{{ pain.title }}</h3>
-              <span class="text-sm text-gray-500">by {{ pain.user.username }}</span>
+              <span class="text-sm text-gray-500">by {{ pain.user?.username || 'Unknown' }}</span>
             </div>
             <p class="text-gray-700 mb-6">{{ pain.description }}</p>
             <div class="flex items-center justify-between">
@@ -67,7 +67,7 @@
                 <span>I feel this pain</span>
               </button>
               <div class="bg-[#F5F5DC] px-3 py-1 rounded-full text-[#1C2B3A] font-medium">
-                {{ pain.votes_count }} <span class="text-sm">votes</span>
+                {{ pain.votes_count || 0 }} <span class="text-sm">votes</span>
               </div>
             </div>
           </div>
@@ -144,6 +144,46 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import AuthModal from './components/AuthModal.vue'
 
+// Настраиваем axios
+axios.defaults.baseURL = 'http://localhost:8000'
+axios.defaults.withCredentials = true
+axios.defaults.headers.common['Content-Type'] = 'application/json'
+axios.defaults.headers.common['Accept'] = 'application/json'
+
+// Настраиваем axios для автоматического добавления токена
+axios.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  console.log('Request config:', config)
+  return config
+}, error => {
+  console.error('Request error:', error)
+  return Promise.reject(error)
+})
+
+// Добавляем обработчик ошибок
+axios.interceptors.response.use(
+  response => {
+    console.log('Response:', response)
+    return response
+  },
+  error => {
+    console.error('Response error:', error)
+    console.error('Response error details:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      headers: error.response?.headers
+    })
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      currentUser.value = null
+    }
+    return Promise.reject(error)
+  }
+)
+
 interface User {
   id: number;
   username: string;
@@ -167,10 +207,32 @@ const currentUser = ref<User | null>(null)
 
 const fetchPains = async () => {
   try {
+    console.log('Fetching pains...')
     const response = await axios.get('/api/pains')
-    pains.value = response.data
-  } catch (error) {
+    console.log('Raw pains response:', response)
+    console.log('Pains data structure:', JSON.stringify(response.data, null, 2))
+    
+    // Проверяем и преобразуем данные, если нужно
+    pains.value = response.data.map((pain: any) => ({
+      id: pain.id,
+      title: pain.title,
+      description: pain.description,
+      user: {
+        id: pain.user_id,
+        username: pain.creator?.username || pain.user?.username || 'Unknown',
+        email: pain.creator?.email || pain.user?.email || ''
+      },
+      votes_count: pain.votes_count || 0
+    }))
+    
+    console.log('Processed pains:', pains.value)
+  } catch (error: any) {
     console.error('Error fetching pains:', error)
+    console.error('Error details:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      headers: error.response?.headers
+    })
   }
 }
 
@@ -178,12 +240,27 @@ const fetchCurrentUser = async () => {
   const token = localStorage.getItem('token')
   if (token) {
     try {
+      console.log('Fetching current user...')
       const response = await axios.get('/api/users/me', {
         headers: { Authorization: `Bearer ${token}` }
       })
-      currentUser.value = response.data
-    } catch (error) {
+      console.log('Raw current user response:', response)
+      console.log('Current user data structure:', JSON.stringify(response.data, null, 2))
+      
+      currentUser.value = {
+        id: response.data.id,
+        username: response.data.username,
+        email: response.data.email
+      }
+      
+      console.log('Processed current user:', currentUser.value)
+    } catch (error: any) {
       console.error('Error fetching current user:', error)
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        headers: error.response?.headers
+      })
       localStorage.removeItem('token')
       currentUser.value = null
     }
@@ -191,23 +268,35 @@ const fetchCurrentUser = async () => {
 }
 
 const handleSubmit = async () => {
-  if (title.value.trim() && description.value.trim()) {
-    try {
-      const token = localStorage.getItem('token')
-      await axios.post('/api/pains', {
-        title: title.value,
-        description: description.value
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      title.value = ''
-      description.value = ''
-      showModal.value = false
-      await fetchPains()
-    } catch (error) {
-      console.error('Error creating pain:', error)
-      alert(error.response?.data?.detail || 'An error occurred')
+  if (!title.value.trim() || !description.value.trim()) {
+    alert('Пожалуйста, заполните все поля')
+    return
+  }
+
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      showAuthModal.value = true
+      return
+    }
+
+    await axios.post('/api/pains', {
+      title: title.value,
+      description: description.value
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    
+    title.value = ''
+    description.value = ''
+    showModal.value = false
+    await fetchPains()
+  } catch (error: any) {
+    console.error('Error creating pain:', error)
+    if (error.response?.status === 401) {
+      showAuthModal.value = true
+    } else {
+      alert(error.response?.data?.detail || 'Произошла ошибка при создании записи')
     }
   }
 }
@@ -220,15 +309,26 @@ const handleVote = async (painId: number) => {
 
   try {
     const token = localStorage.getItem('token')
+    if (!token) {
+      showAuthModal.value = true
+      return
+    }
+
     await axios.post('/api/votes', {
       pain_id: painId
     }, {
       headers: { Authorization: `Bearer ${token}` }
     })
     await fetchPains()
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error voting:', error)
-    alert(error.response?.data?.detail || 'An error occurred')
+    if (error.response?.status === 401) {
+      showAuthModal.value = true
+    } else if (error.response?.status === 400) {
+      alert('Вы уже проголосовали за эту запись')
+    } else {
+      alert(error.response?.data?.detail || 'Произошла ошибка при голосовании')
+    }
   }
 }
 
@@ -245,15 +345,6 @@ const handleLogout = () => {
 onMounted(async () => {
   await fetchCurrentUser()
   await fetchPains()
-})
-
-// Настраиваем axios для автоматического добавления токена
-axios.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
 })
 </script>
 

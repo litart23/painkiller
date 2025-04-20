@@ -4,7 +4,7 @@
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-[#1C2B3A]">{{ isLogin ? 'Login' : 'Register' }}</h2>
         <button 
-          @click="$emit('close')"
+          @click="handleClose"
           class="text-gray-500 hover:text-gray-700 cursor-pointer"
         >
           <i class="fas fa-times"></i>
@@ -50,7 +50,7 @@
           </button>
           <button 
             type="button"
-            @click="isLogin = !isLogin"
+            @click="toggleAuthMode"
             class="text-[#1C2B3A] hover:underline"
           >
             {{ isLogin ? 'Need an account? Register' : 'Already have an account? Login' }}
@@ -76,36 +76,64 @@ const username = ref('')
 const email = ref('')
 const password = ref('')
 
+const handleClose = () => {
+  emit('close')
+}
+
+const toggleAuthMode = () => {
+  isLogin.value = !isLogin.value
+}
+
 const handleSubmit = async () => {
   try {
     if (isLogin.value) {
-      const formData = new FormData()
-      formData.append('username', username.value)
-      formData.append('password', password.value)
-      
-      const response = await axios.post('/api/token', formData)
+      const response = await axios.post('/api/token', {
+        username: username.value,
+        password: password.value
+      }, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      })
+      console.log('Login response:', response.data)
       localStorage.setItem('token', response.data.access_token)
     } else {
-      await axios.post('/api/register', {
+      const registerResponse = await axios.post('/api/register', {
         username: username.value,
         email: email.value,
         password: password.value
       })
+      console.log('Register response:', registerResponse.data)
       
       // After registration, automatically log in
-      const formData = new FormData()
-      formData.append('username', username.value)
-      formData.append('password', password.value)
-      
-      const response = await axios.post('/api/token', formData)
-      localStorage.setItem('token', response.data.access_token)
+      const loginResponse = await axios.post('/api/token', {
+        username: username.value,
+        password: password.value
+      }, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      })
+      console.log('Auto login response:', loginResponse.data)
+      localStorage.setItem('token', loginResponse.data.access_token)
     }
+    
+    // Очищаем форму
+    username.value = ''
+    email.value = ''
+    password.value = ''
     
     emit('auth-success')
     emit('close')
-  } catch (error) {
+  } catch (error: any) {
     console.error('Authentication error:', error)
-    alert(error.response?.data?.detail || 'An error occurred')
+    console.error('Error details:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      headers: error.response?.headers
+    })
+    const errorMessage = error.response?.data?.detail || 'Произошла ошибка при аутентификации'
+    alert(errorMessage)
   }
 }
 </script>

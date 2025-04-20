@@ -25,6 +25,8 @@ origins = [
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5175",
     "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
     "*"  # Временно разрешаем все origins для отладки
 ]
 
@@ -34,7 +36,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
+    expose_headers=["*"],
+    max_age=3600
 )
 
 @app.middleware("http")
@@ -43,6 +46,8 @@ async def log_requests(request: Request, call_next):
     print(f"Method: {request.method}")
     print(f"URL: {request.url}")
     print(f"Headers: {request.headers}")
+    print(f"Origin: {request.headers.get('origin')}")
+    print(f"Authorization: {request.headers.get('authorization')}")
     try:
         body = await request.body()
         if body:
@@ -50,9 +55,10 @@ async def log_requests(request: Request, call_next):
     except:
         pass
     response = await call_next(request)
+    print(f"Response status: {response.status_code}")
     return response
 
-@app.post("/register", response_model=schemas.User)
+@app.post("/api/register", response_model=schemas.User)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     print(f"\n=== Register attempt ===")
     print(f"Username: {user.username}")
@@ -80,7 +86,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     print(f"User {user.username} successfully registered")
     return db_user
 
-@app.post("/token")
+@app.post("/api/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     try:
         print(f"\n=== Login attempt ===")
@@ -115,13 +121,13 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         print(f"Full error details: {e.__class__.__name__}")
         raise
 
-@app.get("/users/me", response_model=schemas.User)
+@app.get("/api/users/me", response_model=schemas.User)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     print(f"\n=== Get current user ===")
     print(f"User: {current_user.username}")
     return current_user
 
-@app.post("/pains", response_model=schemas.Pain)
+@app.post("/api/pains", response_model=schemas.Pain)
 def create_pain(pain: schemas.PainCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     print(f"\n=== Create pain ===")
     print(f"User: {current_user.username}")
@@ -132,7 +138,7 @@ def create_pain(pain: schemas.PainCreate, db: Session = Depends(get_db), current
     db.refresh(db_pain)
     return db_pain
 
-@app.get("/pains")
+@app.get("/api/pains")
 def read_pains(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     print(f"\n=== Get pains ===")
     print(f"Skip: {skip}, Limit: {limit}")
@@ -174,7 +180,7 @@ def read_pains(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
         print(f"Full error details: {e.__class__.__name__}")
         return []
 
-@app.post("/votes", response_model=schemas.Vote)
+@app.post("/api/votes", response_model=schemas.Vote)
 def create_vote(vote: schemas.VoteBase, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     print(f"\n=== Create vote ===")
     print(f"User: {current_user.username}")
@@ -193,7 +199,7 @@ def create_vote(vote: schemas.VoteBase, db: Session = Depends(get_db), current_u
     print(f"Vote created successfully")
     return db_vote
 
-@app.get("/votes/check/{pain_id}")
+@app.get("/api/votes/check/{pain_id}")
 def check_vote(pain_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     print(f"\n=== Check vote ===")
     print(f"User: {current_user.username}")
@@ -205,11 +211,11 @@ def check_vote(pain_id: int, db: Session = Depends(get_db), current_user: models
     print(f"Has voted: {has_voted}")
     return {"has_voted": has_voted}
 
-@app.get("/")
+@app.get("/api")
 async def root():
     return {"message": "Welcome to PainKiller API"}
 
 if __name__ == "__main__":
     import uvicorn
-    print("\n=== Starting server on port 8001 ===")
-    uvicorn.run(app, host="0.0.0.0", port=8001) 
+    print("\n=== Starting server on port 8000 ===")
+    uvicorn.run(app, host="0.0.0.0", port=8000) 
