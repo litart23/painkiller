@@ -146,7 +146,7 @@ import AuthModal from './components/AuthModal.vue'
 
 // Настраиваем axios
 axios.defaults.baseURL = 'http://localhost:8000'
-axios.defaults.withCredentials = true
+axios.defaults.withCredentials = false  // Отключаем credentials
 axios.defaults.headers.common['Content-Type'] = 'application/json'
 axios.defaults.headers.common['Accept'] = 'application/json'
 

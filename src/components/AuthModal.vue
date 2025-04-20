@@ -92,7 +92,7 @@ const handleSubmit = async () => {
         password: password.value
       }, {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         }
       })
       console.log('Login response:', response.data)
@@ -111,7 +111,7 @@ const handleSubmit = async () => {
         password: password.value
       }, {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         }
       })
       console.log('Auto login response:', loginResponse.data)
