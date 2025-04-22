@@ -62,7 +62,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     print(f"\n=== Register attempt ===")
     print(f"Username: {user.username}")
     print(f"Email: {user.email}")
-    
+    #testgit
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if db_user:
         print(f"Username {user.username} already exists")
