@@ -142,7 +142,7 @@ def read_pains(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     print(f"\n=== Get pains ===")
     print(f"Skip: {skip}, Limit: {limit}")
     try:
-        pains = db.query(models.Pain).join(
+        pains = db.query(models.Pain).join( 
             models.User, models.Pain.user_id == models.User.id
         ).outerjoin(
             models.Vote, models.Pain.id == models.Vote.pain_id).group_by(
