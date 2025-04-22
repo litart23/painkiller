@@ -62,7 +62,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     print(f"\n=== Register attempt ===")
     print(f"Username: {user.username}")
     print(f"Email: {user.email}")
-    
+    #testgit
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if db_user:
         print(f"Username {user.username} already exists")
@@ -142,9 +142,10 @@ def read_pains(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     print(f"\n=== Get pains ===")
     print(f"Skip: {skip}, Limit: {limit}")
     try:
-        pains = db.query(models.Pain).join(
+        pains = db.query(models.Pain).join( 
             models.User, models.Pain.user_id == models.User.id
-        ).outerjoin(models.Vote).group_by(
+        ).outerjoin(
+            models.Vote, models.Pain.id == models.Vote.pain_id).group_by(
             models.Pain.id,
             models.User.id,
             models.User.username,
@@ -152,8 +153,8 @@ def read_pains(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
         ).add_columns(
             models.User.username.label("username"),
             models.User.email.label("email"),
-            func.count(models.Vote.id).label("votes_count")
-        ).order_by(func.count(models.Vote.id).desc()).offset(skip).limit(limit).all()
+            func.count(models.Vote.user_id).label("votes_count")
+        ).order_by(func.count(models.Vote.user_id).desc()).offset(skip).limit(limit).all()
         
         result = []
         for pain, username, email, votes_count in pains:
