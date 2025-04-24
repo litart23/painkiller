@@ -50,11 +50,11 @@
         >
           <div class="p-6">
             <div class="flex justify-between items-start mb-2">
-              <h3 class="text-lg font-semibold text-[#1C2B3A]">{{ pain.title }}</h3>
-              <span class="text-sm text-gray-500">by {{ pain.user?.username || 'Unknown' }}</span>
+              <h3 class="text-lg font-semibold text-[#1C2B3A]">{{ pain.title.substring(0,100) }}</h3>
+              <span class="text-sm text-gray-500">by {{ pain.user?.username || 'Unknown' }} </span>
             </div>
-            <p class="text-gray-700 mb-6">{{ pain.description }}</p>
-            <div class="flex items-center justify-between">
+            <p class="text-gray-700 mb-6">{{ pain.description.substring(0,100) }}</p>
+            <div class="flex items-center justify-between mb-2">
               <button 
                 @click="handleVote(pain.id)"
                 :disabled="!currentUser"
@@ -70,6 +70,9 @@
                 {{ pain.votes_count || 0 }} <span class="text-sm">votes</span>
               </div>
             </div>
+              <div class="flex justify-end ">
+                <p class="text-sm text-gray-500">created at {{ pain.created_at.substring(0,10) }}</p>
+              </div>
           </div>
         </div>
       </div>
@@ -194,6 +197,7 @@ interface Pain {
   id: number;
   title: string;
   description: string;
+  created_at: string;
   user: User;
   votes_count: number;
 }
@@ -217,6 +221,7 @@ const fetchPains = async () => {
       id: pain.id,
       title: pain.title,
       description: pain.description,
+      created_at: pain.created_at,
       user: {
         id: pain.user_id,
         username: pain.creator?.username || pain.user?.username || 'Unknown',
